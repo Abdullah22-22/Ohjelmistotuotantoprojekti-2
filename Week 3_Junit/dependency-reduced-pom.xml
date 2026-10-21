@@ -7,6 +7,22 @@
   <build>
     <plugins>
       <plugin>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>3.3.1</version>
+        <configuration>
+          <encoding>UTF-8</encoding>
+        </configuration>
+      </plugin>
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.13.0</version>
+        <configuration>
+          <encoding>UTF-8</encoding>
+          <source>17</source>
+          <target>17</target>
+        </configuration>
+      </plugin>
+      <plugin>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>3.2.5</version>
       </plugin>
@@ -103,5 +119,6 @@
     <maven.compiler.source>17</maven.compiler.source>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <javafx.version>17.0.11</javafx.version>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
   </properties>
 </project>

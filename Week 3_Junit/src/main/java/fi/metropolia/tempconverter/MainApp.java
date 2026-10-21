@@ -1,10 +1,11 @@
 package fi.metropolia.tempconverter;
 
 import fi.metropolia.tempconverter.dao.TempRecordDAO;
-import fi.metropolia.tempconverter.model.TempCalculator;
-import fi.metropolia.tempconverter.model.TempRecord;
-import fi.metropolia.tempconverter.model.TemperatureUnit;
 import fi.metropolia.tempconverter.dao.TemperatureUnitDAO;
+import fi.metropolia.tempconverter.i18n.Messages;
+import fi.metropolia.tempconverter.model.TempRecord;
+import fi.metropolia.tempconverter.model.TemperatureConverter;
+import fi.metropolia.tempconverter.model.TemperatureUnit;
 
 import javafx.application.Application;
 import javafx.collections.FXCollections;
@@ -13,6 +14,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.ChoiceDialog;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
@@ -26,11 +28,15 @@ import javafx.scene.text.Font;
 import javafx.stage.Stage;
 
 import java.sql.SQLException;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
 
 public class MainApp extends Application {
 
-    private final TempCalculator calculator = new TempCalculator();
+    private final TemperatureConverter converter = new TemperatureConverter();
     private final TempRecordDAO recordDAO = new TempRecordDAO();
     private final TemperatureUnitDAO unitDAO = new TemperatureUnitDAO();
 
@@ -44,43 +50,47 @@ public class MainApp extends Application {
 
     @Override
     public void start(Stage stage) {
-        stage.setTitle("Temperature Converter - Metropolia");
+        // Step 2 of the assignment: ask for the language BEFORE building the window.
+        askForLanguage();
 
-        Label title = new Label("Temperature Converter");
+        // From here on every text comes from the chosen .properties file.
+        stage.setTitle(Messages.get("app.title"));
+
+        Label title = new Label(Messages.get("app.heading"));
         title.setFont(new Font("Arial", 22));
 
         inputField = new TextField();
-        inputField.setPromptText("Enter a value");
+        inputField.setPromptText(Messages.get("field.prompt"));
 
         conversionBox = new ComboBox<>();
         conversionBox.getItems().addAll(
-                "Fahrenheit -> Celsius",
-                "Celsius -> Fahrenheit",
-                "Kelvin -> Celsius",
-                "Celsius -> Kelvin");
+                Messages.get("conv.f2c"),
+                Messages.get("conv.c2f"),
+                Messages.get("conv.k2c"),
+                Messages.get("conv.c2k"));
         conversionBox.getSelectionModel().selectFirst();
 
-        Button convertBtn = new Button("Convert & Save");
+        Button convertBtn = new Button(Messages.get("button.convert"));
         convertBtn.setOnAction(e -> convertAndSave());
 
-        Button refreshBtn = new Button("Refresh");
+        Button refreshBtn = new Button(Messages.get("button.refresh"));
         refreshBtn.setOnAction(e -> loadRecords());
 
-        Button deleteBtn = new Button("Delete Selected");
+        Button deleteBtn = new Button(Messages.get("button.delete"));
         deleteBtn.setOnAction(e -> deleteSelected());
 
-        resultLabel = new Label("Result: -");
+        resultLabel = new Label(Messages.get("label.result") + ": -");
         resultLabel.setFont(new Font("Arial", 16));
 
-        statusLabel = new Label("Ready");
+        statusLabel = new Label(Messages.get("status.ready"));
 
         GridPane form = new GridPane();
         form.setHgap(10);
         form.setVgap(10);
         form.setPadding(new Insets(10));
-        form.add(new Label("Value:"), 0, 0);
+        form.add(new Label(Messages.get("label.value")), 0, 0);
         form.add(inputField, 1, 0);
-        form.add(new Label("Conversion:"), 0, 1);
+        form.add(new Label(Messages.get("label.conversion")), 0, 1);
         form.add(conversionBox, 1, 1);
 
         HBox buttons = new HBox(10, convertBtn, refreshBtn, deleteBtn);
@@ -93,7 +103,7 @@ public class MainApp extends Application {
                 form,
                 buttons,
                 resultLabel,
-                new Label("Saved records:"),
+                new Label(Messages.get("label.savedRecords")),
                 table,
                 statusLabel);
         root.setPadding(new Insets(20));
@@ -105,22 +115,46 @@ public class MainApp extends Application {
         loadRecords();
     }
 
+    /**
+     * Shows the language dialog at startup. The choice decides which
+     * MessagesBundle_*.properties file is used for the whole window.
+     */
+    private void askForLanguage() {
+        // LinkedHashMap keeps the order, so English is always first in the list.
+        Map<String, Locale> options = new LinkedHashMap<>();
+        options.put("English", Messages.ENGLISH);
+        options.put("Suomi (Finnish)", Messages.FINNISH);
+        options.put("Svenska (Swedish)", Messages.SWEDISH);
+        options.put("日本語 (Japanese)", Messages.JAPANESE);
+
+        String first = options.keySet().iterator().next();
+
+        ChoiceDialog<String> dialog = new ChoiceDialog<>(first, options.keySet());
+        dialog.setTitle(Messages.get("lang.title"));
+        dialog.setHeaderText(Messages.get("lang.header"));
+        dialog.setContentText(Messages.get("lang.content"));
+
+        Optional<String> answer = dialog.showAndWait();
+        // If the dialog is closed without choosing, English stays as the default.
+        answer.ifPresent(choice -> Messages.setLocale(options.get(choice)));
+    }
+
     private void buildTable() {
         table = new TableView<>();
 
-        TableColumn<TempRecord, Integer> idCol = new TableColumn<>("ID");
+        TableColumn<TempRecord, Integer> idCol = new TableColumn<>(Messages.get("col.id"));
         idCol.setCellValueFactory(new PropertyValueFactory<>("recordId"));
 
-        TableColumn<TempRecord, Double> inCol = new TableColumn<>("Input");
+        TableColumn<TempRecord, Double> inCol = new TableColumn<>(Messages.get("col.input"));
         inCol.setCellValueFactory(new PropertyValueFactory<>("inputValue"));
 
-        TableColumn<TempRecord, Double> outCol = new TableColumn<>("Converted");
+        TableColumn<TempRecord, Double> outCol = new TableColumn<>(Messages.get("col.converted"));
         outCol.setCellValueFactory(new PropertyValueFactory<>("convertedValue"));
 
-        TableColumn<TempRecord, Integer> unitCol = new TableColumn<>("Unit ID");
+        TableColumn<TempRecord, Integer> unitCol = new TableColumn<>(Messages.get("col.unit"));
         unitCol.setCellValueFactory(new PropertyValueFactory<>("unitId"));
 
-        TableColumn<TempRecord, Object> dateCol = new TableColumn<>("Created");
+        TableColumn<TempRecord, Object> dateCol = new TableColumn<>(Messages.get("col.created"));
         dateCol.setCellValueFactory(new PropertyValueFactory<>("createdAt"));
         dateCol.setPrefWidth(160);
 
@@ -137,7 +171,7 @@ public class MainApp extends Application {
     private void convertAndSave() {
         String text = inputField.getText();
         if (text == null || text.trim().isEmpty()) {
-            showStatus("Please enter a value", true);
+            showStatus(Messages.get("status.enterValue"), true);
             return;
         }
 
@@ -145,37 +179,46 @@ public class MainApp extends Application {
         try {
             value = Double.parseDouble(text.trim());
         } catch (NumberFormatException ex) {
-            showStatus("Invalid number", true);
+            showStatus(Messages.get("status.invalidNumber"), true);
             return;
         }
 
-        String choice = conversionBox.getValue();
+        // The INDEX is used instead of the text, because the text is translated.
+        int choice = conversionBox.getSelectionModel().getSelectedIndex();
         double result;
         int unitId;
 
-        if ("Fahrenheit -> Celsius".equals(choice)) {
-            result = calculator.fahrenheitToCelsius(value);
-            unitId = 1;
-        } else if ("Celsius -> Fahrenheit".equals(choice)) {
-            result = calculator.celsiusToFahrenheit(value);
-            unitId = 2;
-        } else if ("Kelvin -> Celsius".equals(choice)) {
-            result = calculator.kelvinToCelsius(value);
-            unitId = 1;
-        } else {
-            result = calculator.celsiusToKelvin(value);
-            unitId = 3;
+        switch (choice) {
+            case 0 -> {                                   // Fahrenheit -> Celsius
+                result = converter.fahrenheitToCelsius(value);
+                unitId = 1;
+            }
+            case 1 -> {                                   // Celsius -> Fahrenheit
+                result = converter.celsiusToFahrenheit(value);
+                unitId = 2;
+            }
+            case 2 -> {                                   // Kelvin -> Celsius
+                result = converter.kelvinToCelsius(value);
+                unitId = 1;
+            }
+            default -> {                                  // Celsius -> Kelvin
+                result = converter.celsiusToKelvin(value);
+                unitId = 3;
+            }
         }
 
-        String extra = calculator.isExtremeTemperature(result) ? "  (EXTREME!)" : "";
-        resultLabel.setText(String.format("Result: %.2f%s", result, extra));
+        String extra = converter.isExtremeTemperature(result)
+                ? "  " + Messages.get("result.extreme")
+                : "";
+        resultLabel.setText(String.format("%s: %.2f%s",
+                Messages.get("label.result"), result, extra));
 
         try {
             recordDAO.insert(new TempRecord(value, result, unitId));
-            showStatus("Saved to database", false);
+            showStatus(Messages.get("status.saved"), false);
             loadRecords();
         } catch (SQLException ex) {
-            showStatus("DB error: " + ex.getMessage(), true);
+            showStatus(Messages.get("status.dbError", ex.getMessage()), true);
         }
     }
 
@@ -183,33 +226,33 @@ public class MainApp extends Application {
         try {
             List<TempRecord> records = recordDAO.findAll();
             data.setAll(records);
-            showStatus("Loaded " + records.size() + " record(s)", false);
+            showStatus(Messages.get("status.loaded", records.size()), false);
         } catch (SQLException ex) {
-            showStatus("Cannot load records: " + ex.getMessage(), true);
+            showStatus(Messages.get("status.cannotLoad", ex.getMessage()), true);
         }
     }
 
     private void loadUnits() {
         try {
             List<TemperatureUnit> units = unitDAO.findAll();
-            showStatus("Connected. Units in DB: " + units.size(), false);
+            showStatus(Messages.get("status.connected", units.size()), false);
         } catch (SQLException ex) {
-            showStatus("No DB connection: " + ex.getMessage(), true);
+            showStatus(Messages.get("status.noConnection", ex.getMessage()), true);
         }
     }
 
     private void deleteSelected() {
         TempRecord selected = table.getSelectionModel().getSelectedItem();
         if (selected == null) {
-            showStatus("Select a row first", true);
+            showStatus(Messages.get("status.selectRow"), true);
             return;
         }
         try {
             recordDAO.delete(selected.getRecordId());
-            showStatus("Deleted record " + selected.getRecordId(), false);
+            showStatus(Messages.get("status.deleted", selected.getRecordId()), false);
             loadRecords();
         } catch (SQLException ex) {
-            showStatus("Delete failed: " + ex.getMessage(), true);
+            showStatus(Messages.get("status.deleteFailed", ex.getMessage()), true);
         }
     }
 
