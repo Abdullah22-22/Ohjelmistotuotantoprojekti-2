@@ -3,7 +3,7 @@ FROM eclipse-temurin:17-jdk
 RUN apt-get update && apt-get install -y \
     libgtk-3-0 libgl1 libxtst6 libxrender1 libxi6 \
     libasound2t64 fontconfig \
-    fonts-noto fonts-noto-cjk \
+    fonts-noto fonts-noto-core fonts-noto-cjk \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

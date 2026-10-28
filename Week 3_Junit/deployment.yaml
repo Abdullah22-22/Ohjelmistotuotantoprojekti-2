@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: temperature-converter
+  labels:
+    app: temperature-converter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: temperature-converter
+  template:
+    metadata:
+      labels:
+        app: temperature-converter
+    spec:
+      containers:
+        - name: temperature-converter
+          image: abdullah22hel/temperature-converter:latest
+          imagePullPolicy: Always
+          env:
+            # The GUI is drawn on the X server (XMing) running on the host.
+            - name: DISPLAY
+              value: "172.20.10.2:0.0"
+            # MariaDB also runs on the host, not inside the cluster.
+            - name: DB_URL
+              value: "jdbc:mariadb://172.20.10.2:3307/tempdb"
+            - name: DB_USER
+              value: "tempapp"
+            - name: DB_PASS
+              value: "temppass"
+            # UTF-8 so the Arabic and Japanese bundles display correctly.
+            - name: LANG
+              value: "C.UTF-8"
+            - name: LC_ALL
+              value: "C.UTF-8"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "768Mi"
+              cpu: "500m"

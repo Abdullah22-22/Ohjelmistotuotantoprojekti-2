@@ -16,6 +16,7 @@ public final class Messages {
     public static final Locale FINNISH  = new Locale("fi", "FI");
     public static final Locale SWEDISH  = new Locale("sv", "SE");
     public static final Locale JAPANESE = new Locale("ja", "JP");
+    public static final Locale ARABIC   = new Locale("ar", "SA");
 
     private static final String BASE_NAME = "MessagesBundle";
 
@@ -32,6 +33,10 @@ public final class Messages {
 
     public static Locale getLocale() {
         return current;
+    }
+
+    public static boolean isRightToLeft() {
+        return ARABIC.getLanguage().equals(current.getLanguage());
     }
 
     public static String get(String key) {

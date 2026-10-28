@@ -65,7 +65,8 @@ class MessagesTest {
         };
 
         for (Locale locale : new Locale[]{
-                Messages.ENGLISH, Messages.FINNISH, Messages.SWEDISH, Messages.JAPANESE}) {
+                Messages.ENGLISH, Messages.FINNISH, Messages.SWEDISH,
+                Messages.JAPANESE, Messages.ARABIC}) {
 
             Messages.setLocale(locale);
             for (String key : keys) {
@@ -75,5 +76,24 @@ class MessagesTest {
                 assertTrue(value.length() > 0);
             }
         }
+    }
+
+    @Test
+    void arabicBundleIsLoadedAsUtf8() {
+        Messages.setLocale(Messages.ARABIC);
+        assertEquals("تحديث", Messages.get("button.refresh"));
+        assertEquals("اللغة", Messages.get("lang.title"));
+    }
+
+    @Test
+    void onlyArabicIsRightToLeft() {
+        Messages.setLocale(Messages.ARABIC);
+        assertTrue(Messages.isRightToLeft());
+
+        Messages.setLocale(Messages.ENGLISH);
+        assertFalse(Messages.isRightToLeft());
+
+        Messages.setLocale(Messages.JAPANESE);
+        assertFalse(Messages.isRightToLeft());
     }
 }

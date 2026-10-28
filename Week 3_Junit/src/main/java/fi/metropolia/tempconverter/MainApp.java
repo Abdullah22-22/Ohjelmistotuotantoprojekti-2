@@ -11,6 +11,7 @@ import javafx.application.Application;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
+import javafx.geometry.NodeOrientation;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
@@ -108,7 +109,13 @@ public class MainApp extends Application {
                 statusLabel);
         root.setPadding(new Insets(20));
 
-        stage.setScene(new Scene(root, 650, 520));
+        Scene scene = new Scene(root, 650, 520);
+
+        if (Messages.isRightToLeft()) {
+            scene.setNodeOrientation(NodeOrientation.RIGHT_TO_LEFT);
+        }
+
+        stage.setScene(scene);
         stage.show();
 
         loadUnits();
@@ -126,6 +133,7 @@ public class MainApp extends Application {
         options.put("Suomi (Finnish)", Messages.FINNISH);
         options.put("Svenska (Swedish)", Messages.SWEDISH);
         options.put("日本語 (Japanese)", Messages.JAPANESE);
+        options.put("العربية (Arabic)", Messages.ARABIC);
 
         String first = options.keySet().iterator().next();
 
