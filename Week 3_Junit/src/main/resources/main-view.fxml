@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<!--
+  The layout of the main window.
+  Every text starts with % which means FXMLLoader takes it from the
+  MessagesBundle of the language the user picked at startup.
+-->
+<VBox xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="fi.metropolia.tempconverter.controller.MainController"
+      spacing="12">
+
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <Label text="%app.heading">
+        <font>
+            <Font name="Arial" size="22"/>
+        </font>
+    </Label>
+
+    <GridPane hgap="10" vgap="10">
+        <padding>
+            <Insets top="10" right="10" bottom="10" left="10"/>
+        </padding>
+
+        <Label text="%label.value"
+               GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+        <TextField fx:id="inputField" promptText="%field.prompt"
+                   GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+
+        <Label text="%label.conversion"
+               GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+        <ComboBox fx:id="conversionBox"
+                  GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+    </GridPane>
+
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Button text="%button.convert" onAction="#onConvert"/>
+        <Button text="%button.refresh" onAction="#onRefresh"/>
+        <Button text="%button.delete" onAction="#onDelete"/>
+    </HBox>
+
+    <Label fx:id="resultLabel" text="%label.result">
+        <font>
+            <Font name="Arial" size="16"/>
+        </font>
+    </Label>
+
+    <Label text="%label.savedRecords"/>
+
+    <TableView fx:id="table" prefHeight="220.0">
+        <columns>
+            <TableColumn fx:id="idCol" text="%col.id"/>
+            <TableColumn fx:id="inputCol" text="%col.input"/>
+            <TableColumn fx:id="convertedCol" text="%col.converted"/>
+            <TableColumn fx:id="unitCol" text="%col.unit"/>
+            <TableColumn fx:id="createdCol" text="%col.created" prefWidth="160.0"/>
+        </columns>
+    </TableView>
+
+    <Label fx:id="statusLabel" text="%status.ready"/>
+</VBox>

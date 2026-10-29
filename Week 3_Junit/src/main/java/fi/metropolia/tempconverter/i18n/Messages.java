@@ -35,6 +35,10 @@ public final class Messages {
         return current;
     }
 
+    public static ResourceBundle getBundle() {
+        return bundle;
+    }
+
     public static boolean isRightToLeft() {
         return ARABIC.getLanguage().equals(current.getLanguage());
     }
