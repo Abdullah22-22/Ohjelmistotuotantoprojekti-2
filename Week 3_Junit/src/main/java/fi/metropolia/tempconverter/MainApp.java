@@ -8,16 +8,36 @@ import javafx.geometry.NodeOrientation;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.ChoiceDialog;
+import javafx.scene.text.Font;
 import javafx.stage.Stage;
 
 import java.io.IOException;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
-
 public class MainApp extends Application {
+
+    /** First font on this machine that can draw Japanese and Arabic. */
+    private static final String UI_FONT = pickFont();
+
+    private static String pickFont() {
+        List<String> installed = Font.getFamilies();
+        String[] wanted = {
+                "Noto Sans CJK JP", "Noto Sans JP", "Noto Sans Mono CJK JP",
+                "IPAGothic", "VL Gothic", "TakaoGothic",
+                "Meiryo", "Yu Gothic", "MS Gothic",   // Windows
+                "Arial Unicode MS"
+        };
+        for (String f : wanted) {
+            if (installed.contains(f)) {
+                return f;
+            }
+        }
+        return null;
+    }
 
     @Override
     public void start(Stage stage) throws IOException {
@@ -30,7 +50,11 @@ public class MainApp extends Application {
 
         Parent root = loader.load();
 
-        Scene scene = new Scene(root, 650, 520);
+        if (UI_FONT != null) {
+            root.setStyle("-fx-font-family: \"" + UI_FONT + "\";");
+        }
+
+        Scene scene = new Scene(root, 700, 560);
 
         if (Messages.isRightToLeft()) {
             scene.setNodeOrientation(NodeOrientation.RIGHT_TO_LEFT);
@@ -52,6 +76,9 @@ public class MainApp extends Application {
         String first = options.keySet().iterator().next();
 
         ChoiceDialog<String> dialog = new ChoiceDialog<>(first, options.keySet());
+        if (UI_FONT != null) {
+            dialog.getDialogPane().setStyle("-fx-font-family: \"" + UI_FONT + "\";");
+        }
         dialog.setTitle(Messages.get("lang.title"));
         dialog.setHeaderText(Messages.get("lang.header"));
         dialog.setContentText(Messages.get("lang.content"));

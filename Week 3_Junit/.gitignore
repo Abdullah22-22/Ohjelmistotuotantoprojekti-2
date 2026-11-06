@@ -39,3 +39,7 @@ target/
 out/
 !**/src/main/**/out/
 !**/src/test/**/out/
+
+
+
+dependency-reduced-pom.xml

@@ -13,34 +13,61 @@ class TemperatureUnitTest {
         TemperatureUnit unit = new TemperatureUnit();
         assertNotNull(unit);
         assertEquals(0, unit.getUnitId());
-        assertNull(unit.getUnitName());
+        assertNull(unit.getUnitKey());
         assertNull(unit.getSymbol());
+        assertNull(unit.getName());
+        assertNull(unit.getDescription());
     }
 
     @Test
     void parameterizedConstructorSetsValues() {
-        TemperatureUnit unit = new TemperatureUnit(1, "Celsius", "C");
+        TemperatureUnit unit = new TemperatureUnit(
+                1, "celsius", "C", "Celsius", "Water freezes at 0");
+
         assertEquals(1, unit.getUnitId());
-        assertEquals("Celsius", unit.getUnitName());
+        assertEquals("celsius", unit.getUnitKey());
         assertEquals("C", unit.getSymbol());
+        assertEquals("Celsius", unit.getName());
+        assertEquals("Water freezes at 0", unit.getDescription());
     }
 
     @Test
     void settersAndGettersWork() {
         TemperatureUnit unit = new TemperatureUnit();
         unit.setUnitId(3);
-        unit.setUnitName("Kelvin");
+        unit.setUnitKey("kelvin");
         unit.setSymbol("K");
+        unit.setName("Kelvin");
+        unit.setDescription("Absolute scale");
 
         assertEquals(3, unit.getUnitId());
-        assertEquals("Kelvin", unit.getUnitName());
+        assertEquals("kelvin", unit.getUnitKey());
         assertEquals("K", unit.getSymbol());
+        assertEquals("Kelvin", unit.getName());
+        assertEquals("Absolute scale", unit.getDescription());
     }
 
     @Test
-    void toStringContainsNameAndSymbol() {
-        TemperatureUnit unit = new TemperatureUnit(2, "Fahrenheit", "F");
-        String text = unit.toString();
-        assertEquals("Fahrenheit (F)", text);
+    void toStringUsesTheLocalizedName() {
+        TemperatureUnit unit = new TemperatureUnit(
+                2, "fahrenheit", "F", "Fahrenheit", "Water freezes at 32");
+        assertEquals("Fahrenheit (F)", unit.toString());
+    }
+
+    @Test
+    void toStringShowsJapaneseNameWithTheSameSymbol() {
+        TemperatureUnit unit = new TemperatureUnit(
+                1, "celsius", "C", "摂氏", "水は0度で凍る");
+        assertEquals("摂氏 (C)", unit.toString());
+    }
+
+    @Test
+    void theKeyStaysTheSameWhateverTheLanguage() {
+        TemperatureUnit en = new TemperatureUnit(1, "celsius", "C", "Celsius", "");
+        TemperatureUnit ar = new TemperatureUnit(1, "celsius", "C", "سيليزيوس", "");
+
+        assertEquals(en.getUnitKey(), ar.getUnitKey());
+        assertEquals(en.getSymbol(), ar.getSymbol());
+        assertEquals(en.getUnitId(), ar.getUnitId());
     }
 }

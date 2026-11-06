@@ -44,6 +44,13 @@ class MessagesTest {
     }
 
     @Test
+    void arabicBundleIsLoadedAsUtf8() {
+        Messages.setLocale(Messages.ARABIC);
+        assertEquals("تحديث", Messages.get("button.refresh"));
+        assertEquals("اللغة", Messages.get("lang.title"));
+    }
+
+    @Test
     void placeholdersAreReplaced() {
         Messages.setLocale(Messages.ENGLISH);
         assertEquals("Loaded 3 record(s)", Messages.get("status.loaded", 3));
@@ -56,12 +63,46 @@ class MessagesTest {
     }
 
     @Test
+    void onlyArabicIsRightToLeft() {
+        Messages.setLocale(Messages.ARABIC);
+        assertTrue(Messages.isRightToLeft());
+
+        Messages.setLocale(Messages.ENGLISH);
+        assertFalse(Messages.isRightToLeft());
+
+        Messages.setLocale(Messages.JAPANESE);
+        assertFalse(Messages.isRightToLeft());
+    }
+
+    @Test
+    void getLangReturnsTheDatabaseLanguageCode() {
+        Messages.setLocale(Messages.ENGLISH);
+        assertEquals("en", Messages.getLang());
+
+        Messages.setLocale(Messages.FINNISH);
+        assertEquals("fi", Messages.getLang());
+
+        Messages.setLocale(Messages.SWEDISH);
+        assertEquals("sv", Messages.getLang());
+
+        Messages.setLocale(Messages.JAPANESE);
+        assertEquals("ja", Messages.getLang());
+
+        Messages.setLocale(Messages.ARABIC);
+        assertEquals("ar", Messages.getLang());
+    }
+
+    @Test
     void everyLocaleHasAllKeys() {
         String[] keys = {
-                "app.title", "app.heading", "label.value", "label.conversion",
+                "app.title", "app.heading",
+                "label.value", "label.fromUnit", "label.toUnit",
+                "label.result", "label.lastFive",
                 "button.convert", "button.refresh", "button.delete",
-                "conv.f2c", "conv.c2f", "conv.k2c", "conv.c2k",
-                "status.ready", "status.invalidNumber", "result.extreme"
+                "col.id", "col.input", "col.fromUnit", "col.converted",
+                "col.toUnit", "col.lang", "col.created",
+                "status.ready", "status.invalidNumber", "status.sameUnit",
+                "result.extreme"
         };
 
         for (Locale locale : new Locale[]{
@@ -73,27 +114,8 @@ class MessagesTest {
                 String value = Messages.get(key);
                 assertNotNull(value);
                 assertFalse(value.startsWith("!"), "Missing key " + key + " in " + locale);
-                assertTrue(value.length() > 0);
+                assertFalse(value.isEmpty());
             }
         }
-    }
-
-    @Test
-    void arabicBundleIsLoadedAsUtf8() {
-        Messages.setLocale(Messages.ARABIC);
-        assertEquals("تحديث", Messages.get("button.refresh"));
-        assertEquals("اللغة", Messages.get("lang.title"));
-    }
-
-    @Test
-    void onlyArabicIsRightToLeft() {
-        Messages.setLocale(Messages.ARABIC);
-        assertTrue(Messages.isRightToLeft());
-
-        Messages.setLocale(Messages.ENGLISH);
-        assertFalse(Messages.isRightToLeft());
-
-        Messages.setLocale(Messages.JAPANESE);
-        assertFalse(Messages.isRightToLeft());
     }
 }

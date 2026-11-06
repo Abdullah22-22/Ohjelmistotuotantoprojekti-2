@@ -10,13 +10,8 @@
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
-<?import javafx.scene.text.Font?>
 
-<!--
-  The layout of the main window.
-  Every text starts with % which means FXMLLoader takes it from the
-  MessagesBundle of the language the user picked at startup.
--->
+
 <VBox xmlns="http://javafx.com/javafx/17"
       xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="fi.metropolia.tempconverter.controller.MainController"
@@ -26,11 +21,7 @@
         <Insets top="20" right="20" bottom="20" left="20"/>
     </padding>
 
-    <Label text="%app.heading">
-        <font>
-            <Font name="Arial" size="22"/>
-        </font>
-    </Label>
+    <Label text="%app.heading" style="-fx-font-size: 22px; -fx-font-weight: bold;"/>
 
     <GridPane hgap="10" vgap="10">
         <padding>
@@ -42,11 +33,18 @@
         <TextField fx:id="inputField" promptText="%field.prompt"
                    GridPane.columnIndex="1" GridPane.rowIndex="0"/>
 
-        <Label text="%label.conversion"
+        <Label text="%label.fromUnit"
                GridPane.columnIndex="0" GridPane.rowIndex="1"/>
-        <ComboBox fx:id="conversionBox"
+        <ComboBox fx:id="fromUnitBox" prefWidth="220.0"
                   GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+
+        <Label text="%label.toUnit"
+               GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+        <ComboBox fx:id="toUnitBox" prefWidth="220.0"
+                  GridPane.columnIndex="1" GridPane.rowIndex="2"/>
     </GridPane>
+
+    <Label fx:id="descriptionLabel" text="" wrapText="true"/>
 
     <HBox spacing="10" alignment="CENTER_LEFT">
         <Button text="%button.convert" onAction="#onConvert"/>
@@ -54,21 +52,19 @@
         <Button text="%button.delete" onAction="#onDelete"/>
     </HBox>
 
-    <Label fx:id="resultLabel" text="%label.result">
-        <font>
-            <Font name="Arial" size="16"/>
-        </font>
-    </Label>
+    <Label fx:id="resultLabel" text="%label.result" style="-fx-font-size: 16px;"/>
 
-    <Label text="%label.savedRecords"/>
+    <Label text="%label.lastFive"/>
 
-    <TableView fx:id="table" prefHeight="220.0">
+    <TableView fx:id="table" prefHeight="200.0">
         <columns>
-            <TableColumn fx:id="idCol" text="%col.id"/>
-            <TableColumn fx:id="inputCol" text="%col.input"/>
-            <TableColumn fx:id="convertedCol" text="%col.converted"/>
-            <TableColumn fx:id="unitCol" text="%col.unit"/>
-            <TableColumn fx:id="createdCol" text="%col.created" prefWidth="160.0"/>
+            <TableColumn fx:id="idCol"        text="%col.id"        prefWidth="40.0"/>
+            <TableColumn fx:id="inputCol"     text="%col.input"     prefWidth="80.0"/>
+            <TableColumn fx:id="fromCol"      text="%col.fromUnit"  prefWidth="110.0"/>
+            <TableColumn fx:id="convertedCol" text="%col.converted" prefWidth="80.0"/>
+            <TableColumn fx:id="toCol"        text="%col.toUnit"    prefWidth="110.0"/>
+            <TableColumn fx:id="langCol"      text="%col.lang"      prefWidth="50.0"/>
+            <TableColumn fx:id="createdCol"   text="%col.created"   prefWidth="150.0"/>
         </columns>
     </TableView>
 

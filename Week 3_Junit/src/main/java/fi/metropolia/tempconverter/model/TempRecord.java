@@ -7,16 +7,24 @@ public class TempRecord {
     private int recordId;
     private double inputValue;
     private double convertedValue;
-    private int unitId;
+    private int fromUnitId;
+    private int toUnitId;
+    private String lang;
     private LocalDateTime createdAt;
+
+    private String fromUnitName;
+    private String toUnitName;
 
     public TempRecord() {
     }
 
-    public TempRecord(double inputValue, double convertedValue, int unitId) {
+    public TempRecord(double inputValue, double convertedValue,
+                      int fromUnitId, int toUnitId, String lang) {
         this.inputValue = inputValue;
         this.convertedValue = convertedValue;
-        this.unitId = unitId;
+        this.fromUnitId = fromUnitId;
+        this.toUnitId = toUnitId;
+        this.lang = lang;
     }
 
     public int getRecordId() {
@@ -43,12 +51,28 @@ public class TempRecord {
         this.convertedValue = convertedValue;
     }
 
-    public int getUnitId() {
-        return unitId;
+    public int getFromUnitId() {
+        return fromUnitId;
     }
 
-    public void setUnitId(int unitId) {
-        this.unitId = unitId;
+    public void setFromUnitId(int fromUnitId) {
+        this.fromUnitId = fromUnitId;
+    }
+
+    public int getToUnitId() {
+        return toUnitId;
+    }
+
+    public void setToUnitId(int toUnitId) {
+        this.toUnitId = toUnitId;
+    }
+
+    public String getLang() {
+        return lang;
+    }
+
+    public void setLang(String lang) {
+        this.lang = lang;
     }
 
     public LocalDateTime getCreatedAt() {
@@ -57,5 +81,21 @@ public class TempRecord {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getFromUnitName() {
+        return fromUnitName;
+    }
+
+    public void setFromUnitName(String fromUnitName) {
+        this.fromUnitName = fromUnitName;
+    }
+
+    public String getToUnitName() {
+        return toUnitName;
+    }
+
+    public void setToUnitName(String toUnitName) {
+        this.toUnitName = toUnitName;
     }
 }

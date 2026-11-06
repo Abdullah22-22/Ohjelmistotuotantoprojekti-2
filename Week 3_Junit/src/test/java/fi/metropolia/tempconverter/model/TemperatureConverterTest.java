@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TemperatureConverterTest {
@@ -55,6 +56,49 @@ class TemperatureConverterTest {
         double original = 25.0;
         double back = converter.fahrenheitToCelsius(converter.celsiusToFahrenheit(original));
         assertEquals(original, back, 0.0001);
+    }
+
+    @Test
+    @DisplayName("toCelsius handles every unit key")
+    void toCelsiusHandlesEveryKey() {
+        assertEquals(25.0, converter.toCelsius(25.0, "celsius"), 0.01);
+        assertEquals(100.0, converter.toCelsius(212.0, "fahrenheit"), 0.01);
+        assertEquals(0.0, converter.toCelsius(273.15, "kelvin"), 0.01);
+    }
+
+    @Test
+    @DisplayName("fromCelsius handles every unit key")
+    void fromCelsiusHandlesEveryKey() {
+        assertEquals(25.0, converter.fromCelsius(25.0, "celsius"), 0.01);
+        assertEquals(212.0, converter.fromCelsius(100.0, "fahrenheit"), 0.01);
+        assertEquals(273.15, converter.fromCelsius(0.0, "kelvin"), 0.01);
+    }
+
+    @Test
+    @DisplayName("convert works for all nine unit pairs")
+    void convertWorksForAllPairs() {
+        assertEquals(100.0, converter.convert(212.0, "fahrenheit", "celsius"), 0.01);
+        assertEquals(212.0, converter.convert(100.0, "celsius", "fahrenheit"), 0.01);
+        assertEquals(0.0, converter.convert(273.15, "kelvin", "celsius"), 0.01);
+        assertEquals(273.15, converter.convert(0.0, "celsius", "kelvin"), 0.01);
+        assertEquals(373.15, converter.convert(212.0, "fahrenheit", "kelvin"), 0.01);
+        assertEquals(32.0, converter.convert(273.15, "kelvin", "fahrenheit"), 0.01);
+    }
+
+    @Test
+    @DisplayName("Converting to the same unit changes nothing")
+    void sameUnitReturnsSameValue() {
+        assertEquals(50.0, converter.convert(50.0, "celsius", "celsius"), 0.01);
+        assertEquals(50.0, converter.convert(50.0, "kelvin", "kelvin"), 0.01);
+    }
+
+    @Test
+    @DisplayName("An unknown unit key is rejected")
+    void unknownUnitKeyThrows() {
+        assertThrows(IllegalArgumentException.class,
+                () -> converter.toCelsius(10.0, "rankine"));
+        assertThrows(IllegalArgumentException.class,
+                () -> converter.fromCelsius(10.0, "rankine"));
     }
 
     @Test

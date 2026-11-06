@@ -7,7 +7,7 @@ import java.sql.SQLException;
 public class DBConnection {
 
     private static String url  = System.getenv().getOrDefault("DB_URL",
-            "jdbc:mariadb://localhost:3307/tempdb");
+            "jdbc:mariadb://localhost:3307/tempdb?useUnicode=true&characterEncoding=utf8");
     private static String user = System.getenv().getOrDefault("DB_USER", "root");
     private static String pass = System.getenv().getOrDefault("DB_PASS", "root");
 

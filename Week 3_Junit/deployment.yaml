@@ -24,11 +24,11 @@ spec:
               value: "172.20.10.2:0.0"
             # MariaDB also runs on the host, not inside the cluster.
             - name: DB_URL
-              value: "jdbc:mariadb://172.20.10.2:3307/tempdb"
+              value: "jdbc:mariadb://172.20.10.2:3307/tempdb?useUnicode=true&characterEncoding=utf8"
             - name: DB_USER
-              value: "tempapp"
+              value: "root"
             - name: DB_PASS
-              value: "temppass"
+              value: "root"
             # UTF-8 so the Arabic and Japanese bundles display correctly.
             - name: LANG
               value: "C.UTF-8"

@@ -35,6 +35,11 @@ public final class Messages {
         return current;
     }
 
+    /** Language code for the DB queries: en, fi, sv, ja, ar. */
+    public static String getLang() {
+        return current.getLanguage();
+    }
+
     public static ResourceBundle getBundle() {
         return bundle;
     }
