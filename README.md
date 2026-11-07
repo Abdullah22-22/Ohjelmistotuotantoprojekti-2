@@ -1,321 +1,270 @@
 # Temperature Converter
 
-Individual in-class assignment, Metropolia UAS.
+Individual in-class assignments, Metropolia UAS.
 
-A small JavaFX desktop app that converts temperatures and saves every conversion into a MariaDB database. The saved conversions are shown in a table inside the app, and you can delete them.
+A JavaFX desktop app that converts temperatures and saves every conversion to a MariaDB
+database. It runs in five languages: English, Finnish, Swedish, Japanese and Arabic. The
+buttons and titles come from `.properties` files, but the unit names and descriptions come
+from the database in whichever language the user picked.
 
-## 1. Assignment Description
+## 1. What the app does
 
-The task was to build a desktop application with a GUI that does temperature conversions and stores the results in a database, then test it with JUnit and set up a build pipeline for it.
-
-What the app has to do:
-
-- Convert between Fahrenheit, Celsius and Kelvin (4 directions)
-- Warn the user when the result is an extreme temperature
-- Save every conversion to the database
-- Show all saved conversions in a table, with refresh and delete
+- Pick a language at startup, right-to-left layout when Arabic is selected
+- Convert between any two of Celsius, Fahrenheit and Kelvin
+- Warn when the result is an extreme temperature
+- Read unit names and descriptions from the database, falling back to English
+- Save each conversion with both units, the result, the language and a timestamp
+- Show the last 5 conversions in a table
 - Handle bad input without crashing
 
-What I had to deliver:
+Built, tested and shipped through JUnit, JaCoCo, Docker, Kubernetes and Jenkins.
 
-- The working app, packaged as a runnable JAR
-- JUnit tests for the logic and the database code
-- A code coverage report
-- A Dockerfile so the app runs in a container
-- A Jenkins pipeline that builds, tests and pushes the Docker image
-- This README
+## 2. Technologies
 
-## 2. Technologies & Tools Used
+- **Java 17**, **Maven**
+- **JavaFX 17.0.11** with FXML
+- **MariaDB** with utf8mb4, JDBC driver 3.3.3
+- **JUnit 5** and **H2** in-memory for the DAO tests
+- **JaCoCo** for coverage, **Maven Shade** for the runnable JAR
+- **Docker** (multi-stage), **minikube**, **Jenkins**, **Docker Hub**
 
-- **Java 17** and **Maven** for the project itself
-- **JavaFX 17.0.11** for the user interface
-- **MariaDB** as the database, with the MariaDB JDBC driver 3.3.3
-- **JUnit 5** (Jupiter 5.10.2) for the tests
-- **H2 2.2.224** as an in-memory database for the tests only
-- **JaCoCo 0.8.11** for code coverage
-- **Maven Shade Plugin** to build a JAR with all dependencies inside
-- **Docker** to containerise the app
-- **Jenkins** for the CI pipeline, and **Docker Hub** to store the image
-- Git and GitHub for version control
+The JavaFX natives come from a Maven profile: `win` on Windows, `linux` inside Docker. Having
+both listed at once made the two sets of native libraries clash and the app would not start.
 
-JavaFX is added twice in the pom.xml, once with the `win` classifier and once with `linux`. I did this because I develop on Windows but the Docker image runs on Linux, and this way the same JAR works in both.
+## 3. DB localization approach: translation table
 
-## 3. Design Approach & Implementation Method
-
-I split the code into four packages so each part has one job:
-
-```
-fi.metropolia.tempconverter
-├── Launcher.java          starts the app
-├── MainApp.java           the JavaFX window
-├── model/
-│   ├── TempCalculator     the conversion formulas
-│   ├── TempRecord         one saved conversion
-│   └── TemperatureUnit    one unit (Celsius, Fahrenheit, Kelvin)
-├── dao/
-│   ├── TempRecordDAO      database operations for records
-│   └── TemperatureUnitDAO database operations for units
-└── db/
-    └── DBConnection       opens and closes the connection
-```
-
-### Why there is a Launcher class
-
-A JavaFX `Application` class cannot be the main class of a shaded JAR. If you try, the JVM says "JavaFX runtime components are missing" and refuses to start. The usual fix is a tiny normal class that calls `MainApp.main()`, so that is what `Launcher` is. The shade plugin points at `Launcher` in the pom.xml.
-
-### GUI
-
-I built the interface in code instead of using FXML, since the window is small and keeping it in one method was easier to follow.
-
-The window has a text field for the value, a dropdown with the four conversion directions, and three buttons: Convert & Save, Refresh, and Delete Selected. Below that is a `TableView` showing the saved records (ID, input, result, unit ID, time). At the bottom there is a status label that turns green on success and red on errors. All messages go through one `showStatus()` method so the behaviour is the same everywhere.
-
-Before converting, the app checks that the field is not empty and that the text is actually a number. Both cases show a message instead of throwing an exception.
-
-### Conversion logic
-
-`TempCalculator` has no database and no JavaFX in it, only the formulas. That made it very easy to test. It also has `isExtremeTemperature()`, which returns true when the value is below -40 °C or above 50 °C. The two boundary values themselves are not counted as extreme.
-
-Keeping this class separate from `MainApp` was the main design decision. If the formulas were written inside the button handlers I would not be able to test them at all.
-
-### Database
-
-Two tables:
+I picked the **translation table**: a language-neutral base table plus a separate table with
+one row per unit and language.
 
 ```sql
 temperature_units
   unit_id    INT AUTO_INCREMENT PRIMARY KEY
-  unit_name  VARCHAR(20) NOT NULL
-  symbol     VARCHAR(5)  NOT NULL
+  unit_key   VARCHAR(20) NOT NULL UNIQUE   -- celsius, fahrenheit, kelvin
+  symbol     VARCHAR(5)  NOT NULL          -- C, F, K
+
+unit_translation
+  unit_id     INT         NOT NULL, FK -> temperature_units
+  lang        VARCHAR(5)  NOT NULL         -- en, fi, sv, ja, ar
+  name        VARCHAR(50) NOT NULL
+  description VARCHAR(200)
+  PRIMARY KEY (unit_id, lang)
 
 temp_records
   record_id        INT AUTO_INCREMENT PRIMARY KEY
   input_value      DOUBLE NOT NULL
   converted_value  DOUBLE NOT NULL
-  unit_id          INT, foreign key to temperature_units
+  from_unit_id     INT, FK -> temperature_units
+  to_unit_id       INT, FK -> temperature_units
+  lang             VARCHAR(5) NOT NULL DEFAULT 'en'
   created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ```
 
-The timestamp is filled by the database, not by Java, so it does not depend on the computer's clock.
+**Why.** What convinced me was looking at what actually changes between languages. The symbol
+`C` is the same everywhere, so is the ID, and so is every foreign key pointing at it. Only
+the name and description change. The field approach would add a column per language; the row
+approach would duplicate the symbol five times per unit. Splitting the table stores the
+stable parts once and repeats only the text. Adding a sixth language is five INSERTs — no
+schema change, no code change.
 
-`DBConnection` keeps one static connection and reopens it if it is null or closed. It reads the database settings from the environment variables `DB_URL`, `DB_USER` and `DB_PASS`, and falls back to `localhost:3307` with root/root if they are not set. This is what lets the same JAR run on my machine and inside Docker without changing any code.
+The second reason is the fallback. Because the translations sit in their own table, I can
+join it twice in one query:
 
-It also has a `setCredentials()` method. The tests use it to point the app at an H2 database instead of MariaDB.
+```sql
+LEFT JOIN unit_translation t ON t.unit_id = u.unit_id AND t.lang = ?   -- requested
+LEFT JOIN unit_translation f ON f.unit_id = u.unit_id AND f.lang = 'en'
+...
+COALESCE(t.name, f.name) AS name
+```
 
-In the DAO classes I used `PreparedStatement` everywhere so the queries are safe from SQL injection, and try-with-resources so nothing stays open. Inserts use `RETURN_GENERATED_KEYS` so the new ID comes back right away. In `TempRecordDAO` I put the ResultSet mapping into one private `mapRow()` method so the column names are written only once.
+`COALESCE` takes the requested translation when it exists and English when it does not. The
+joins are `LEFT` on purpose: with `INNER JOIN` a unit with no translation would vanish from
+the list instead of showing in English.
 
-### Docker
+The cost is one extra join per query. For three units and five languages that is nothing.
 
-The image is based on `eclipse-temurin:17-jdk`. JavaFX needs native graphics libraries, so the Dockerfile installs GTK, OpenGL and a few X11 libraries before copying the JAR. `DISPLAY` points to `host.docker.internal:0.0` so the window appears on the host's X server, and the database variables point back to the host as well.
+**How the two layers stay in sync.** `Messages.setLocale()` swaps the ResourceBundle, and
+`Messages.getLang()` returns the same locale as `en`/`fi`/`sv`/`ja`/`ar` — exactly what the
+`lang` column stores. Every DAO call takes that string. That is the whole link.
 
-### Jenkins pipeline
+## 4. Structure
 
-Seven stages: Build, Test, Code Coverage, Publish Test Results, Publish Coverage Report, Build Docker Image, Push to Docker Hub.
+```
+fi.metropolia.tempconverter
+├── Launcher              starts the app
+├── MainApp               loads the FXML, picks a CJK-capable font, asks for the language
+├── controller/
+│   └── MainController    button handlers, fills the dropdowns from the DB
+├── model/
+│   ├── TemperatureConverter  the formulas, no DB and no JavaFX
+│   ├── TemperatureUnit       unit_key + symbol + localized name and description
+│   └── TempRecord            one saved conversion
+├── dao/
+│   ├── TemperatureUnitDAO    localized reads with the English fallback
+│   └── TempRecordDAO         insert, and the last 5 with unit names joined in
+├── db/
+│   └── DBConnection      reads DB_URL / DB_USER / DB_PASS from the environment
+└── i18n/
+    └── Messages          the ResourceBundle, UTF-8, and getLang()
+```
 
-The Build stage runs with `-DskipTests` so I can tell a compile error apart from a failing test. Test results come from Surefire and coverage from JaCoCo, both published so Jenkins shows the trend between builds. The image gets two tags, the build number and `latest`. The Docker Hub password comes from Jenkins credentials and is never written in the repository.
+**Launcher** exists because a JavaFX `Application` cannot be the main class of a shaded JAR —
+the JVM refuses with "JavaFX runtime components are missing".
 
-## 4. Testing & Quality Assurance Steps
+**Conversion logic** pivots through Celsius, so `convert(value, from, to)` covers all nine
+combinations with three formulas each way. Both switches run on `unit_key`, never on the
+displayed name: the key is `"celsius"` in every language while the name is `摂氏` in Japanese.
+If the logic depended on the name, switching language would break the app.
 
-### How I tested
+**GUI.** `main-view.fxml` uses `%key` placeholders so FXMLLoader pulls every label from the
+selected bundle. The two dropdowns hold `TemperatureUnit` objects straight from the database;
+`toString()` returns `name (symbol)`, so Japanese shows `摂氏 (C)` with no extra code.
 
-I wrote 37 tests in 6 classes. The model classes are tested on their own, and the DAO classes are tested against a real database.
+I had to remove the `<Font name="Arial">` entries — Arial does not exist in the container and
+JavaFX fell back to a Latin-only font, so Japanese rendered as empty boxes. `pickFont()` now
+asks JavaFX which families exist and picks the first that can draw CJK.
 
-For the DAO tests I had a choice between mocking JDBC and using a real database. I chose H2 running in memory with MySQL compatibility mode. With mocks I would only prove that my code calls JDBC, not that my SQL is correct. With H2 the real queries actually run, so mistakes in the SQL show up. It is still fast and it needs no database server, so it also works on the Jenkins agent.
+**DBConnection** falls back to `localhost:3307` when the environment variables are unset,
+which is what lets the same JAR run locally, in Docker and in Kubernetes untouched. Its
+`setCredentials()` is what the tests use to point at H2.
 
-Each test class uses its own in-memory database name and recreates the tables in `@BeforeEach`, so the tests do not affect each other and can run in any order.
+**Docker** is multi-stage: Maven builds the JAR inside the image so it picks up the Linux
+natives, then the runtime stage installs GTK, X11 and the Noto fonts.
 
-### Test results
+**Jenkins** runs eight stages, from checkout to pushing both image tags. The Docker Hub token
+comes from Jenkins credentials and is never in the repository.
 
-**TempCalculatorTest (6 tests)**
+## 5. Testing
 
-| Test | What it checks | Result |
+69 tests in 7 classes, all passing. Models tested on their own, DAOs against H2 in MySQL mode.
+
+I chose H2 over mocking JDBC because mocks would only prove the code calls JDBC, not that the
+SQL is right — and the SQL is the interesting part here, with the double join and COALESCE.
+
+| Class | Tests | Covers |
 |---|---|---|
-| fahrenheitToCelsius | 32, 212, -40 and 98.6 °F | Pass |
-| celsiusToFahrenheit | 0, 100 and -40 °C | Pass |
-| kelvinToCelsius | 300 K, 273.15 K and 0 K | Pass |
-| celsiusToKelvin | 0 and 100 °C | Pass |
-| roundTripConversion | 25 °C to F and back to C | Pass |
-| isExtremeTemperature | -41, 51, 1000 against -40, 50, 25, 0 | Pass |
+| TemperatureConverterTest | 14 | formulas, all nine pairs, unknown keys, extreme boundaries |
+| TemperatureUnitDAOTest | 15 | localized reads, **four fallback cases**, insert, delete |
+| TempRecordDAOTest | 13 | insert with language, last 5, localized history, fallback |
+| MessagesTest | 10 | five bundles, UTF-8, RTL, getLang(), every key present |
+| DBConnectionTest | 6 | reuse, close, recreate, credential switch |
+| TemperatureUnitTest | 6 | model, key stable across languages |
+| TempRecordTest | 5 | model, fields filled by the DAO join |
 
-I used -40 on purpose because it is the one point where Celsius and Fahrenheit are equal. If the formula was reversed, that test would still pass but the others would fail, so together they catch it. The extreme test checks both sides of each limit so the comparison stays inclusive.
+**The fallback tests.** The seeded data is deliberately incomplete — Kelvin has an English row
+only. Four tests cover it: a missing translation, a unit with no translation still appearing
+in the list, an unknown language (`de`) returning everything in English, and a new unit with
+only English.
 
-**TemperatureUnitTest (4 tests)**
+The one I like most is in `TempRecordDAOTest`: a Celsius-to-Kelvin record read in Japanese
+comes back as `摂氏 → Kelvin` — source translated, target fallen back, same row. That proves
+the fallback works per unit, not per query.
 
-Empty constructor gives id 0 and null fields, the full constructor sets all three values, getters and setters work, and `toString()` returns `Fahrenheit (F)`. All pass.
-
-**TempRecordTest (4 tests)**
-
-Empty constructor defaults, full constructor, all getters and setters including the `LocalDateTime`, and negative values being allowed. All pass.
-
-**DBConnectionTest (6 tests)**
-
-| Test | What it checks | Result |
-|---|---|---|
-| getConnectionReturnsOpenConnection | Connection is not null and is open | Pass |
-| getConnectionReusesSameConnection | Two calls return the same object | Pass |
-| testConnectionReturnsTrueWhenOpen | Health check returns true | Pass |
-| closeConnectionClosesIt | Connection really closes | Pass |
-| connectionIsRecreatedAfterClose | A new one opens after closing | Pass |
-| setCredentialsResetsConnection | Switching URL gives a new connection | Pass |
-
-The reuse test proves the connection is cached, and the recreate test proves the caching does not leave the app permanently broken after a close.
-
-**TemperatureUnitDAOTest (8 tests)**
-
-The table is seeded with Celsius, Fahrenheit and Kelvin.
-
-| Test | What it checks | Result |
-|---|---|---|
-| findAllReturnsThreeUnits | Reads the 3 seeded rows | Pass |
-| findByIdReturnsCorrectUnit | ID 1 gives Celsius / C | Pass |
-| findByIdReturnsNullForUnknownId | ID 999 gives null | Pass |
-| findBySymbolReturnsCorrectUnit | Symbol K gives Kelvin | Pass |
-| findBySymbolReturnsNullForUnknownSymbol | Symbol X gives null | Pass |
-| insertAddsNewUnit | New unit gets an ID and can be read back | Pass |
-| deleteRemovesUnit | Deleted unit is gone | Pass |
-| deleteReturnsFalseForUnknownId | Deleting ID 999 returns false | Pass |
-
-**TempRecordDAOTest (9 tests)**
-
-Both tables are created with the foreign key, and `temp_records` starts empty.
-
-| Test | What it checks | Result |
-|---|---|---|
-| tableIsEmptyAtStart | count is 0 and findAll is empty | Pass |
-| insertReturnsGeneratedId | Insert returns a positive ID | Pass |
-| insertStoresCorrectValues | All fields come back correctly, timestamp is set | Pass |
-| findAllReturnsAllRecords | Three inserts give three rows | Pass |
-| findByIdReturnsNullForUnknownId | ID 999 gives null | Pass |
-| deleteRemovesRecord | Record is gone and count drops to 0 | Pass |
-| deleteReturnsFalseForUnknownId | Deleting a missing ID returns false | Pass |
-| deleteAllClearsTable | Returns 2 and empties the table | Pass |
-| negativeTemperaturesAreStored | -40 keeps its sign | Pass |
-
-`insertStoresCorrectValues` is the most useful one here, because it is the only test that proves the timestamp created by the database actually arrives back in Java as a real `LocalDateTime`.
-
-**Total: 37 tests, 37 passed, 0 failed.**
-
-All comparisons between doubles use a delta (0.01 for conversions, 0.001 for stored values, 0.0001 for the round trip) instead of exact equality.
+I used -40 on purpose in the conversion tests since it is the one point where Celsius and
+Fahrenheit are equal. Alone it would still pass with the formula reversed, but together with
+32 and 212 it catches it.
 
 ### Coverage
 
-JaCoCo runs during the test phase, so the report is generated on every build at `target/site/jacoco/index.html`.
+| Package | Line coverage |
+|---|---|
+| **model** | **100%** (branches 100%) |
+| **dao** | **98%** |
+| i18n | 96% |
+| db | 93% |
+| controller | 0% |
+| Total | 61% |
 
-The `model` and `dao` packages have the highest coverage. `MainApp` is not unit tested because JavaFX event handlers need a running toolkit to test properly. That is the reason I moved the formulas out into `TempCalculator`, so the untested part is only layout and button wiring, which I checked by hand.
+The core logic is at 98–100%. `MainController` and `MainApp` are not unit tested because
+JavaFX event handlers need a running toolkit — which is exactly why the formulas live in
+`TemperatureConverter` and the queries in the DAOs. What stays untested is layout and button
+wiring, checked by hand.
+
+Report at `target/site/jacoco/index.html`, regenerated on every build.
 
 ### Manual testing
 
-I ran these with MariaDB running on port 3307:
+1. Started in Japanese: dropdowns showed `摂氏 (C)`, `華氏 (F)`, `ケルビン (K)` from the database.
+2. Started in Arabic: layout flipped right-to-left, names in Arabic.
+3. 212 °F to Celsius gave 100.00 and a new row.
+4. 122 °F, exactly 50 °C, was not flagged as extreme.
+5. Saved two conversions in Arabic, restarted in Japanese: same rows, Japanese names,
+   `ar` still in the language column.
+6. Same unit in both dropdowns gave "pick two different units".
+7. "abc" gave "invalid number" in red. Nothing saved, no crash.
+8. After 8 conversions the table still showed only the newest 5.
+9. Stopped MariaDB: the app opened and showed the connection error in red.
+10. Docker image against an X server: Japanese and Arabic both rendered.
+11. minikube: `kubectl get pods` showed 1/1 Running and the window appeared.
+12. Jenkins: all eight stages green, both tags on Docker Hub.
 
-1. Started the app and the status bar showed the number of units from the database, so the connection works.
-2. Entered 212 with Fahrenheit to Celsius. Got 100.00, green status, and a new row in the table.
-3. Entered 1000 with Fahrenheit to Celsius and the result was marked (EXTREME!).
-4. Entered 122 °F, which is exactly 50 °C, and it was not marked as extreme.
-5. Clicked Convert with an empty field and got "Please enter a value" in red. Nothing was saved.
-6. Entered "abc" and got "Invalid number" in red. No crash, nothing saved.
-7. Entered -40 in both directions and the values saved correctly.
-8. Added a row with SQL directly, then clicked Refresh and it appeared.
-9. Clicked Delete Selected without selecting anything and got "Select a row first".
-10. Selected a row and deleted it, then confirmed with a SELECT that it was gone from the database.
-11. Stopped MariaDB and started the app again. It opened and showed the connection error in red instead of crashing.
-12. Ran the packaged JAR with `java -jar` and it started without any module path arguments.
-13. Built the Docker image and ran it with an X server on Windows. The window opened and connected to the database on the host.
-14. Ran the Jenkins job and all seven stages passed. Test results and coverage appeared in Jenkins and both image tags showed up on Docker Hub.
+## 6. How to run
 
-## 5. How to Run
+**You need** JDK 17, Maven 3.6+, MariaDB on port 3307. Docker and an X server for the
+container, minikube for the deployment. The tests need none of it — they use H2.
 
-### What you need
-
-- JDK 17
-- Maven 3.6 or newer
-- MariaDB or MySQL running on port 3307
-- Docker and an X server, only if you want to run the container
-
-The tests do not need MariaDB. They use H2 in memory.
-
-### Database setup
-
-```sql
-CREATE DATABASE tempdb;
-USE tempdb;
-SOURCE schema.sql;
-```
-
-Then add the units:
-
-```sql
-INSERT INTO temperature_units (unit_name, symbol) VALUES
-  ('Celsius','C'), ('Fahrenheit','F'), ('Kelvin','K');
-```
-
-Insert them in this order. The app saves records with unit IDs 1, 2 and 3, so they need to match.
-
-### Build
+### Database
 
 ```bash
-git clone <repository-url>
-cd <repository-directory>
+mysql -u root -p -P 3307 < init.sql
+```
+
+Drops and recreates `tempdb` with utf8mb4, creates the three tables, fills in all five
+languages.
+
+### Build and run
+
+```bash
 mvn clean package
-```
-
-This compiles the code, runs all 37 tests, creates the coverage report and builds the JAR at `target/week3-junit-1.0-SNAPSHOT.jar`.
-
-### Run
-
-From Maven:
-
-```bash
 mvn javafx:run
 ```
 
-Or from the JAR:
+or `java -jar target/week3-junit-1.0-SNAPSHOT.jar`
+
+### Docker
+
+Start the X server with access control off first:
 
 ```bash
-java -jar target/week3-junit-1.0-SNAPSHOT.jar
+"/c/Program Files (x86)/Xming/Xming.exe" -multiwindow -clipboard -ac &
 ```
 
-Or with Docker:
-
 ```bash
-mvn clean package
 docker build -t temperature-converter .
 
 docker run --rm \
   -e DISPLAY=host.docker.internal:0.0 \
-  -e DB_URL=jdbc:mariadb://host.docker.internal:3307/tempdb \
-  -e DB_USER=root \
-  -e DB_PASS=root \
+  -e DB_URL="jdbc:mariadb://host.docker.internal:3307/tempdb?useUnicode=true&characterEncoding=utf8" \
+  -e DB_USER=root -e DB_PASS=root \
   temperature-converter
 ```
 
-Start the X server first and allow connections from the container. The image is also on Docker Hub:
+Also on Docker Hub: `docker pull abdullah22hel/temperature-converter:latest`
+
+### Kubernetes
 
 ```bash
-docker pull abdullah22hel/temperature-converter:latest
+minikube start
+kubectl apply -f deployment.yaml
+kubectl get pods
 ```
+
+`deployment.yaml` points `DISPLAY` and `DB_URL` at the host's IP, since both the X server and
+MariaDB run outside the cluster.
+
+### Tests alone
+
+```bash
+mvn test
+```
+
+Results in `target/surefire-reports/`, coverage at `target/site/jacoco/index.html`.
 
 ### Settings
 
 | Variable | Default |
 |---|---|
-| DB_URL | jdbc:mariadb://localhost:3307/tempdb |
+| DB_URL | jdbc:mariadb://localhost:3307/tempdb?useUnicode=true&characterEncoding=utf8 |
 | DB_USER | root |
 | DB_PASS | root |
 
-You can change any of these without rebuilding. For example use port 3306 if your server runs on the default port.
-
-### Running the tests alone
-
-```bash
-mvn test
-mvn test jacoco:report
-```
-
-Results are in `target/surefire-reports/` and the coverage report is at `target/site/jacoco/index.html`.
-
-### Using the app
-
-1. Type a number in the Value field.
-2. Pick a conversion from the dropdown.
-3. Click Convert & Save. The result appears, and it says (EXTREME!) if it is below -40 °C or above 50 °C. The conversion is saved to the database.
-4. Click Refresh to reload the table, or select a row and click Delete Selected to remove it.
-5. The status bar at the bottom shows what happened after every action.
+Change any of them without rebuilding.
